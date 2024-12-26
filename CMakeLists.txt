@@ -8,7 +8,8 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Add the executable
-add_executable(Halcyon src/main.cpp)
+#include_directories(${CMAKE_SOURCE_DIR})
+add_executable(Halcyon src/main.cpp src/tokenizer.cpp)
 
 # Optionally, specify include directories or libraries if needed
 # include_directories(${PROJECT_SOURCE_DIR}/include)

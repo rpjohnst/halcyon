@@ -1,6 +1,6 @@
 #include <string>
 #include <iostream>
-#include "tokenizer.cpp"
+#include "tokenizer.hpp"
 
 int main() {
     std::string CODE = R"(
