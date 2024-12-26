@@ -9,6 +9,7 @@ std::string getTokenName(TokenType type) {
     return *it; // Assumes the list size matches the enum count
 }
 
+Tokenizer::Tokenizer(const std::string& code) : data(code), it(data.begin()), line_count(1), line_position(1) {}
 
 // Helper methods
 bool Tokenizer::is_digit(char c) { return std::isdigit(c) || c == '.'; }
@@ -50,8 +51,6 @@ std::string Tokenizer::consume_number() {
     }
     return result;
 }
-
-Tokenizer::Tokenizer(const std::string& code) : data(code), it(data.begin()), line_count(1), line_position(1) {}
 
 Token Tokenizer::next_token() {
     Token token{};
