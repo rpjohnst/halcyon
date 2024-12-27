@@ -114,6 +114,20 @@ Token Tokenizer::next_token(bool use_queue) {
         token.value.push_back(eat()); // Consume the last '/'
         token.type = TokenType::COMMENT;
     }
+    else if (is_oneof(*it, STRING)){
+        char opening = eat();
+        while(true){
+            if (it == data.end()) throw std::runtime_error("String not terminated!");
+            char c = *it;
+            if (c == opening){
+                eat();
+                break;
+            }
+            token.value.push_back(eat());
+        }
+        token.type = TokenType::STRING;
+    }
+
     // Word or keyword
     else if (is_word_start(*it)) {
         token.value = consume(GROUPS(WORD,NUMERIC));

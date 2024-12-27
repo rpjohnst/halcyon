@@ -10,6 +10,7 @@ const std::string WHITESPACE = " \r\n\t";
 const std::string PUNCTUATION = ",.;";
 const std::string PAREN = "()";
 const std::string BRACES = "{}";
+const std::string STRING = "\"'";
 const std::string WORD = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
 const std::string NUMERIC = "0123456789";
 const std::string NUMERIC_PUNCTUATION = "._x";
