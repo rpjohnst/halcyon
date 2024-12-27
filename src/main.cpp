@@ -11,7 +11,7 @@ let name = "some name HERE 'with other' else";
 let name2 = 'some name HERE "with other" else';
 let y = 20; // another comment
 let /*a = /*14*/;
-let*/ b? = 26;
+let* b = 26;
 mut(a) += x;
 print(x+y);
 )";

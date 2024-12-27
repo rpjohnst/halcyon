@@ -53,24 +53,6 @@ std::string Tokenizer::consume(const std::string &group) {
     }
     return result;
 }
-// std::string Tokenizer::consume(const std::vector<std::string> &groups) {
-//     std::string result;
-//     while (true){
-//         char c = peek();
-//         bool abort = true;
-//         for (const auto group : groups){
-//             if (is_of(c, group)){
-//                 abort = false;
-//                 break;
-//             }
-//         }
-//         if (abort || c == '\0'){
-//             break;
-//         }
-//         result += eat();
-//     }
-//     return result;
-// }
 
 Token Tokenizer::peek_token(unsigned int offset){
     Token token;
@@ -115,9 +97,15 @@ Token Tokenizer::next_token(bool use_queue) {
     // Multi-line comment
     else if (*it == '/' && peek(1) == '*') {
         int depth = 1;
+        int ln = line_count;
+        int lp = line_position;
         token.value.push_back(eat()); // Consume '/' to prevent another depth match
         while (depth > 0) {
-            if (it == data.end()) throw std::runtime_error("Multiline comment not terminated!");
+            if (it == data.end()){
+                std::string error = "Multiline comment not terminated!";
+                std::cerr << MakePrettyError(data, ln, lp, error, 2, 4);
+                throw std::runtime_error(error);
+            }
             if (*it == '/' && peek(1) == '*') depth++;
             else if (*it == '*' && peek(1) == '/') depth--;
             token.value.push_back(eat());
@@ -126,9 +114,15 @@ Token Tokenizer::next_token(bool use_queue) {
         token.type = TokenType::COMMENT;
     }
     else if (is_oneof(*it, STRING)){
+        int ln = line_count;
+        int lp = line_position;
         char opening = eat();
         while(true){
-            if (it == data.end()) throw std::runtime_error("String not terminated!");
+            if (it == data.end()) {
+                std::string error = "String not terminated!";
+                std::cerr << MakePrettyError(data, ln, lp, error, 1, 4);
+                throw std::runtime_error(error);
+            }
             char c = *it;
             if (c == opening){
                 eat();
