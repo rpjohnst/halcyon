@@ -61,22 +61,6 @@ std::string Tokenizer::consume(const std::vector<std::string> &groups) {
     return result;
 }
 
-// std::string Tokenizer::consume_word() {
-//     std::string result;
-//     while (it != data.end() && is_word(*it)) {
-//         result.push_back(eat());
-//     }
-//     return result;
-// }
-
-// std::string Tokenizer::consume_number() {
-//     std::string result;
-//     while (it != data.end() && (is_oneof(*it, NUMERIC) || *it == '.')) {
-//         result.push_back(eat());
-//     }
-//     return result;
-// }
-
 Token Tokenizer::next_token() {
     Token token{};
 
