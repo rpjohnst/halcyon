@@ -5,7 +5,7 @@
 int main() {
     std::string CODE = R"(
 //this is a comment
-let x = 10;
+let x = 10.5;
 let y = 20; // another comment
 let /*a = /*14*/;
 let*/ b = 26;

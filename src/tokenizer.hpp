@@ -2,6 +2,7 @@
 #define TOKENIZER_HPP
 #include <string>
 #include <list>
+#include <vector>
 
 
 const std::string OPERATORS = "+-*/^%=<>!";
@@ -11,6 +12,7 @@ const std::string PAREN = "()";
 const std::string BRACES = "{}";
 const std::string WORD = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
 const std::string NUMERIC = "0123456789";
+const std::string NUMERIC_PUNCTUATION = "._x";
 const std::list<std::string> KEYWORDS = {
     "let","mut","copy",
     "if", "else","func"
@@ -71,8 +73,10 @@ private:
     bool is_word_start(char c);
     bool is_word(char c);
     bool is_keyword(const std::string &word);
+    bool is_of(char c, const std::string &group);
     char eat();
     char peek(int offset);
+    std::string consume(const std::vector<std::string> &groups);
     std::string consume_word();
     std::string consume_number();
 
