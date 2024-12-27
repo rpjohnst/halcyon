@@ -5,6 +5,9 @@
 #include <vector>
 #include <iostream>
 
+
+static std::vector<std::string> GROUP_VECTOR = {};
+
 const std::string OPERATORS = "+-*/^%=<>!";
 const std::string WHITESPACE = " \r\n\t";
 const std::string PUNCTUATION = ",.;";

@@ -4,7 +4,7 @@
 #include <list>
 #include <stdexcept>
 
-#define GROUPS(...) static std::vector<std::string> {__VA_ARGS__}
+#define SET_GROUP_VECTOR(...) GROUP_VECTOR.clear(); GROUP_VECTOR.assign({__VA_ARGS__})
 
 std::string getTokenName(TokenType type) {
     int index = static_cast<int>(type);
@@ -131,17 +131,20 @@ Token Tokenizer::next_token(bool use_queue) {
 
     // Word or keyword
     else if (is_word_start(*it)) {
-        token.value = consume(GROUPS(WORD,NUMERIC));
+        SET_GROUP_VECTOR(WORD,NUMERIC);
+        token.value = consume(GROUP_VECTOR);
         token.type = is_keyword(token.value) ? TokenType::KEYWORD : TokenType::IDENTIFIER;
     }
     // Number
     else if (is_oneof(*it, NUMERIC)) {
-        token.value = consume(GROUPS(NUMERIC,NUMERIC_PUNCTUATION));
+        SET_GROUP_VECTOR(NUMERIC,NUMERIC_PUNCTUATION);
+        token.value = consume(GROUP_VECTOR);
         token.type = TokenType::NUMBER;
     }
     // Operators
     else if (is_operator(*it)) {
-        token.value = consume(GROUPS(OPERATORS));
+        SET_GROUP_VECTOR(OPERATORS);
+        token.value = consume(GROUP_VECTOR);
         token.type = TokenType::OPERATOR;
     }
     // Punctuation and parentheses
