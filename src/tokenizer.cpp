@@ -61,8 +61,25 @@ std::string Tokenizer::consume(const std::vector<std::string> &groups) {
     return result;
 }
 
-Token Tokenizer::next_token() {
+Token Tokenizer::peek_token(unsigned int offset){
+    Token token;
+    while(token_queue.size() <= offset){
+        token = next_token(false);
+        if (token.type == TokenType::EOF_TOKEN){
+            return token;
+        }
+        token_queue.push_back(token);
+    }
+    return token_queue.at(offset);
+}
+
+Token Tokenizer::next_token(bool use_queue) {
     Token token{};
+    if (use_queue && token_queue.size()>0){
+        token = token_queue.front();
+        token_queue.erase(token_queue.begin());
+        return token;
+    }
 
     while (it != data.end() && is_whitespace(*it)) {
         eat(); // Consume whitespace

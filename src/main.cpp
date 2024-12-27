@@ -19,6 +19,9 @@ print(x+y);
         if (tok.type == TokenType::EOF_TOKEN) break;
         std::cout << "line " << tok.line_number << ", position " << tok.line_position << ": " << getTokenName(tok.type) << ": " << tok.value 
                   << std::endl;
+        tok = tokenizer.peek_token(5);
+        std::cout << "line " << tok.line_number << ", position " << tok.line_position << ": " << getTokenName(tok.type) << ": " << tok.value 
+                  << std::endl;
     }
     return 0;
 }

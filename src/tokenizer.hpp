@@ -63,6 +63,8 @@ private:
     std::string::iterator it;
     unsigned int line_count;
     unsigned int line_position;
+    //not using a queue because we need nth access
+    std::vector<Token> token_queue;
 
     // Helper methods
     bool is_digit(char c);
@@ -82,7 +84,8 @@ private:
 
 public:
     Tokenizer(const std::string& code);
-    Token next_token();
+    Token next_token(bool use_queue = true);
+    Token peek_token(unsigned int offset = 0);
 };
 
 
