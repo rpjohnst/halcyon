@@ -4,7 +4,6 @@
 #include <list>
 #include <stdexcept>
 
-#define SET_GROUP_VECTOR(...) GROUP_VECTOR.clear(); GROUP_VECTOR.assign({__VA_ARGS__})
 
 std::string getTokenName(TokenType type) {
     int index = static_cast<int>(type);
@@ -43,24 +42,35 @@ char Tokenizer::peek(int offset = 0) {
     return *(it + offset);
 }
 
-std::string Tokenizer::consume(const std::vector<std::string> &groups) {
+std::string Tokenizer::consume(const std::string &group) {
     std::string result;
     while (true){
         char c = peek();
-        bool abort = true;
-        for (const auto group : groups){
-            if (is_of(c, group)){
-                abort = false;
-                break;
-            }
-        }
-        if (abort || c == '\0'){
+        if (!is_of(c, group) || c == '\0'){
             break;
         }
         result += eat();
     }
     return result;
 }
+// std::string Tokenizer::consume(const std::vector<std::string> &groups) {
+//     std::string result;
+//     while (true){
+//         char c = peek();
+//         bool abort = true;
+//         for (const auto group : groups){
+//             if (is_of(c, group)){
+//                 abort = false;
+//                 break;
+//             }
+//         }
+//         if (abort || c == '\0'){
+//             break;
+//         }
+//         result += eat();
+//     }
+//     return result;
+// }
 
 Token Tokenizer::peek_token(unsigned int offset){
     Token token;
@@ -131,20 +141,17 @@ Token Tokenizer::next_token(bool use_queue) {
 
     // Word or keyword
     else if (is_word_start(*it)) {
-        SET_GROUP_VECTOR(WORD,NUMERIC);
-        token.value = consume(GROUP_VECTOR);
+        token.value = consume(GROUP_WORD);
         token.type = is_keyword(token.value) ? TokenType::KEYWORD : TokenType::IDENTIFIER;
     }
     // Number
     else if (is_oneof(*it, NUMERIC)) {
-        SET_GROUP_VECTOR(NUMERIC,NUMERIC_PUNCTUATION);
-        token.value = consume(GROUP_VECTOR);
+        token.value = consume(GROUP_NUMERIC);
         token.type = TokenType::NUMBER;
     }
     // Operators
     else if (is_operator(*it)) {
-        SET_GROUP_VECTOR(OPERATORS);
-        token.value = consume(GROUP_VECTOR);
+        token.value = consume(OPERATORS);
         token.type = TokenType::OPERATOR;
     }
     // Punctuation and parentheses
@@ -161,5 +168,3 @@ Token Tokenizer::next_token(bool use_queue) {
 
     return token;
 }
-
-#undef GROUPS

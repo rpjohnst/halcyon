@@ -5,9 +5,6 @@
 #include <vector>
 #include <iostream>
 
-
-static std::vector<std::string> GROUP_VECTOR = {};
-
 const std::string OPERATORS = "+-*/^%=<>!";
 const std::string WHITESPACE = " \r\n\t";
 const std::string PUNCTUATION = ",.;";
@@ -17,6 +14,11 @@ const std::string STRING = "\"'";
 const std::string WORD = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_";
 const std::string NUMERIC = "0123456789";
 const std::string NUMERIC_PUNCTUATION = "._x";
+
+
+const std::string GROUP_WORD = WORD+NUMERIC;
+const std::string GROUP_NUMERIC = NUMERIC+NUMERIC_PUNCTUATION;
+
 const std::list<std::string> KEYWORDS = {
     "let","mut","copy",
     "if", "else","func"
@@ -82,7 +84,7 @@ private:
     bool is_of(char c, const std::string &group);
     char eat();
     char peek(int offset);
-    std::string consume(const std::vector<std::string> &groups);
+    std::string consume(const std::string &groups);
     std::string consume_word();
     std::string consume_number();
 
