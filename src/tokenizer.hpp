@@ -3,7 +3,7 @@
 #include <string>
 #include <list>
 #include <vector>
-
+#include <iostream>
 
 const std::string OPERATORS = "+-*/^%=<>!";
 const std::string WHITESPACE = " \r\n\t";

@@ -1,4 +1,5 @@
 #include "tokenizer.hpp"
+#include "fancyerror.hpp"
 #include <string>
 #include <list>
 #include <stdexcept>
@@ -149,8 +150,9 @@ Token Tokenizer::next_token(bool use_queue) {
         token.type = TokenType::PUNCTUATION;
     }
     else {
-        std::string error = "Tokenizer: Unknown character ";
+        std::string error = "Unknown character ";
         error.push_back(*it);
+        std::cerr << MakePrettyError(data, line_count, line_position, error, 1, 4);
         throw std::runtime_error(error);
     }
 
