@@ -7,7 +7,7 @@
 #include <print>
 
 namespace {
-auto print(uint32_t indent, Tree *tree) -> void;
+auto print(uint32_t indent, Syntax node) -> void;
 }
 
 auto main() -> int {
@@ -18,36 +18,41 @@ auto main() -> int {
         "    0 -> 0,\n"
         "    1 -> 1,\n"
         "    _ -> fibonacci(n - 1) + fibonacci(n - 2),\n"
-        "}\n\0"sv;
+        "};\n"
+        "\n"
+        "factorial(n) = n {\n"
+        "    1 -> 1,\n"
+        "    _ -> n * factorial(n - 1),\n"
+        "}\0"sv;
 
     auto arena = Arena{};
     auto intern = Symbol::Intern{};
-    auto parse = Parse{arena, intern, source};
-    auto module = parse.module();
+    auto definitions = module(arena, intern, source);
 
-    print(0, module);
+    print(0, definitions.node);
     std::println("");
 }
 
 namespace {
-auto print(uint32_t indent, Tree *tree) -> void {
+auto print(uint32_t indent, Syntax node) -> void {
     using namespace std::literals;
 
     std::print("{:{}}", "", 2 * indent);
 
-    auto children = tree->children();
-    if (children.size() > 0) { std::print("("); }
+    if (node.arity() > 0) { std::print("("); }
 
-    if (tree->kind < TreeKind::Module) { std::print("\""); }
-    std::print("{}", Parse::name(tree->kind));
-    if (tree->kind < TreeKind::Module) { std::print("\""); }
-
-    if (std::any_of(children.begin(), children.end(), [](Tree *child) { return child->arity; })) {
-        for (auto child : children) { std::println(""); print(indent + 1, child); }
+    if (node.kind() < TOKENS) {
+        std::print("{:?}", node.source());
     } else {
-        for (auto child : children) { std::print(" "); print(0, child); }
+        std::print("{}", Tree::name(node.kind()));
     }
 
-    if (children.size() > 0) { std::print(")"); }
+    if (std::any_of(node.begin(), node.end(), [](Syntax child) { return child.arity(); })) {
+        for (auto child : node) { std::println(""); print(indent + 1, child); }
+    } else {
+        for (auto child : node) { std::print(" "); print(0, child); }
+    }
+
+    if (node.arity() > 0) { std::print(")"); }
 }
 }

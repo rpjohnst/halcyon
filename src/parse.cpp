@@ -2,53 +2,89 @@
 #include "syntax.h"
 #include "arena.h"
 
-#include <iterator>
-#include <print>
+#include <vector>
 #include <span>
+#include <print>
 #include <cassert>
+#include <cstdint>
 
 using namespace std::literals;
 
-Parse::Parse(Arena &arena, Symbol::Intern &intern, std::string_view source) :
-    arena(arena), intern(intern), begin(source.begin()), end(source.end() - 1)
+struct Parse {
+    Arena &arena;
+    Symbol::Intern &intern;
+
+    // This stack holds partial sequences of children for in-progress tree nodes,
+    // before the current lookahead token. It is split in two segments, with any
+    // topmost sequence of trivia (whitespace and comments) stored in `space`.
+    // When a token is consumed, both the trivia and token are pushed onto `stack`.
+    std::vector<Tree *> stack;
+    std::vector<Tree *> space;
+
+    // The current lookahead token, and its position in the input buffer.
+    TreeKind token;
+    const char *text;
+
+    // The remaining input after the lookahead token. `end` must point to a nul byte
+    // for the lexer to use as a sentinel, eliding most comparisons with `end`.
+    const char *begin;
+    const char *end;
+
+    Parse(Arena &arena, Symbol::Intern &intern, std::string_view text);
+
+    auto module() -> Tree *;
+
+    auto expression(TreeKind parent) -> bool;
+    auto constructor() -> void;
+    auto args() -> bool;
+    auto object() -> void;
+
+    auto pattern() -> bool;
+    auto destructor() -> void;
+    auto params() -> bool;
+
+    auto arrow() -> void;
+
+    auto expect(TreeKind expected) -> void;
+    auto expect(std::string_view expected) -> void;
+    auto eat(TreeKind expected) -> bool;
+    auto shift() -> void;
+    auto read() -> void;
+
+    auto mark() -> size_t;
+    auto reduce(TreeKind kind, size_t start) -> Tree *;
+
+    auto remove() -> void;
+    auto insert(TreeKind kind) -> void;
+};
+
+auto module(Arena &arena, Symbol::Intern &intern, std::string_view text) -> DelimList {
+    auto parse = Parse{arena, intern, text};
+    auto module = parse.module();
+    return DelimList::from(Syntax{module, text.data()});
+}
+
+Parse::Parse(Arena &arena, Symbol::Intern &intern, std::string_view text) :
+    arena(arena), intern(intern), begin(&text.front()), end(&text.back())
 {
     assert(*end == '\0');
     this->read();
 }
 
-auto Parse::name(TreeKind kind) -> std::string_view {
-    constexpr auto names = std::array{
-        "error"sv, "end of file"sv, "whitespace"sv, "comment"sv,
-        "name"sv, "number"sv, "string"sv,
-        "+"sv, "-"sv, "*"sv, "/"sv, "<"sv, "="sv, ">"sv, "."sv, ","sv, ";"sv,
-        "("sv, ")"sv, "["sv, "]"sv, "{"sv, "}"sv,
-
-        "module"sv, "definition"sv,
-        "parentheses"sv, "constructor"sv, "case"sv, "cut"sv, "binary"sv,
-
-        "method"sv, "->"sv,
-    };
-    return names[size_t(kind)];
-}
-
 auto Parse::module() -> Tree * {
     while (this->token != TreeKind::End) {
         auto start = this->mark();
-        if (this->eat(TreeKind::Name)) {
-            if (this->token != TreeKind::Equal) {
-                this->pattern();
-                this->reduce(TreeKind::CutExpr, start);
-            }
-            this->expect(TreeKind::Equal);
-            this->expression(TreeKind::Definition);
-            this->reduce(TreeKind::Definition, start);
-        } else {
+        if (!this->pattern()) {
             this->expect("definition"sv);
-            this->shift();
-            this->reduce(TreeKind::Error, start);
+            this->remove();
+            continue;
         }
+        this->expect(TreeKind::Equal);
+        this->expression(TreeKind::BindExpr);
+        this->reduce(TreeKind::BindExpr, start);
+        if (this->token != TreeKind::End) { this->expect(TreeKind::Semi); }
     }
-    return this->reduce(TreeKind::Module, 0);
+    return this->reduce(TreeKind::DelimList, 0);
 }
 
 namespace {
@@ -70,7 +106,6 @@ auto Parse::expression(TreeKind parent) -> bool {
         this->expect(TreeKind::RightParen);
         this->reduce(TreeKind::ParenExpr, start);
     } else {
-        this->expect("expression"sv);
         return false;
     }
 
@@ -122,28 +157,46 @@ auto right_child(TreeKind parent, TreeKind child) -> bool {
 
 auto Parse::constructor() -> void {
     auto start = this->mark();
-    this->eat(TreeKind::Name);
+    auto name = this->eat(TreeKind::Name);
+    auto args = this->args();
+    if (name && args) { this->reduce(TreeKind::ConsExpr, start); }
+}
+
+auto Parse::args() -> bool {
     if (this->eat(TreeKind::LeftParen)) {
+        auto start = this->mark();
         while (this->token != TreeKind::End && this->token != TreeKind::RightParen) {
-            if (!this->expression(TreeKind::ConsExpr)) { break; }
+            if (!this->expression(TreeKind::DelimList)) {
+                this->expect("expression"sv);
+                this->reduce(TreeKind::Error, this->stack.size());
+                break;
+            }
             if (this->token != TreeKind::RightParen) { this->expect(TreeKind::Comma); }
         }
+        this->reduce(TreeKind::DelimList, start);
         this->expect(TreeKind::RightParen);
-        this->reduce(TreeKind::ConsExpr, start);
+        return true;
     }
+    return false;
 }
 
 auto Parse::object() -> void {
     auto start = this->mark();
     this->expect(TreeKind::LeftBrace);
+    auto methods = this->mark();
     while (this->token != TreeKind::End && this->token != TreeKind::RightBrace) {
         auto start = this->mark();
-        if (!this->pattern()) { break; }
+        if (!this->pattern()) {
+            this->expect("method"sv);
+            this->reduce(TreeKind::Error, this->stack.size());
+            break;
+        }
         this->arrow();
-        this->expression(TreeKind::Method);
-        this->reduce(TreeKind::Method, start);
+        this->expression(TreeKind::BindExpr);
+        this->reduce(TreeKind::BindExpr, start);
         if (this->token != TreeKind::RightBrace) { this->expect(TreeKind::Comma); }
     }
+    this->reduce(TreeKind::DelimList, methods);
     this->expect(TreeKind::RightBrace);
     this->reduce(TreeKind::CaseExpr, start);
 }
@@ -159,12 +212,10 @@ auto Parse::pattern() -> bool {
     } else if (this->eat(TreeKind::Number)) {
     } else if (this->eat(TreeKind::String)) {
     } else {
-        this->expect("pattern"sv);
         return false;
     }
 
     while (true) {
-        auto start = this->mark();
         if (this->token == TreeKind::Name) {
             auto text = std::string_view(this->text, this->begin - this->text);
             auto symbol = Symbol::intern(this->arena, this->intern, text);
@@ -182,15 +233,27 @@ auto Parse::pattern() -> bool {
 
 auto Parse::destructor() -> void {
     auto start = this->mark();
-    this->eat(TreeKind::Name);
+    auto name = this->eat(TreeKind::Name);
+    auto params = this->params();
+    if (name && params) { this->reduce(TreeKind::ConsExpr, start); }
+}
+
+auto Parse::params() -> bool {
     if (this->eat(TreeKind::LeftParen)) {
+        auto start = this->mark();
         while (this->token != TreeKind::End && this->token != TreeKind::RightParen) {
-            if (!this->pattern()) { break; }
+            if (!this->pattern()) {
+                this->expect("pattern"sv);
+                this->reduce(TreeKind::Error, this->stack.size());
+                break;
+            }
             if (this->token != TreeKind::RightParen) { this->expect(TreeKind::Comma); }
         }
+        this->reduce(TreeKind::DelimList, start);
         this->expect(TreeKind::RightParen);
-        this->reduce(TreeKind::ConsExpr, start);
+        return true;
     }
+    return false;
 }
 
 namespace {
@@ -211,12 +274,15 @@ auto Parse::arrow() -> void {
 }
 
 auto Parse::expect(TreeKind expected) -> void {
-    if (!this->eat(expected)) { this->expect(Parse::name(expected)); }
+    if (!this->eat(expected)) {
+        this->expect(Tree::name(expected));
+        this->reduce(TreeKind::Error, this->stack.size());
+    }
 }
 
 auto Parse::expect(std::string_view expected) -> void {
     auto found = std::string_view(this->text, this->begin - this->text);
-    std::println(stderr, "error: expected {}; found {}", expected, Parse::name(this->token));
+    std::println(stderr, "error: expected {}; found {}", expected, Tree::name(this->token));
 }
 
 auto Parse::eat(TreeKind expected) -> bool {
@@ -238,8 +304,8 @@ auto Parse::shift() -> void {
         std::make_move_iterator(this->space.begin()), std::make_move_iterator(this->space.end()));
     this->space.clear();
 
-    auto tree = arena.alloc<Tree>(this->token, uint32_t(this->begin - this->text), empty);
-    this->stack.push_back(tree);
+    auto width = uint32_t(this->begin - this->text);
+    this->stack.push_back(arena.alloc<Tree>(this->token, true, width, empty));
 
     this->read();
 }
@@ -251,8 +317,8 @@ auto Parse::read() -> void {
 
         if (this->token != TreeKind::Space && this->token != TreeKind::Comment) { break; }
 
-        auto tree = arena.alloc<Tree>(this->token, uint32_t(this->begin - this->text), empty);
-        this->space.push_back(tree);
+        auto width = uint32_t(this->begin - this->text);
+        this->space.push_back(arena.alloc<Tree>(this->token, false, width, empty));
     }
 }
 
@@ -265,11 +331,27 @@ auto Parse::reduce(TreeKind kind, size_t start) -> Tree * {
     for (auto child : children) { width += child->width; }
 
     auto p = arena.alloc(sizeof(Tree) + sizeof(Tree *) * children.size(), alignof(Tree));
-    auto tree = new (p) Tree(kind, width, children);
+    auto tree = new (p) Tree(kind, true, width, children);
 
     this->stack.resize(start);
     this->stack.push_back(tree);
     return tree;
+}
+
+auto Parse::remove() -> void {
+    auto width = uint32_t(this->begin - this->text);
+    this->space.push_back(arena.alloc<Tree>(this->token, false, width, empty));
+
+    this->read();
+}
+
+auto Parse::insert(TreeKind kind) -> void {
+    this->stack.insert(
+        this->stack.end(),
+        std::make_move_iterator(this->space.begin()), std::make_move_iterator(this->space.end()));
+    this->space.clear();
+
+    this->stack.push_back(arena.alloc<Tree>(kind, true, uint32_t(0), empty));
 }
 
 namespace {
