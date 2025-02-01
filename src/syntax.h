@@ -70,10 +70,10 @@ struct Syntax {
         }
     };
     auto begin() -> Iterator {
-        return Iterator{&*this->tree->children().begin(), this->text};
+        return Iterator{this->tree->children().data(), this->text};
     }
     auto end() -> Iterator {
-        return Iterator{&*this->tree->children().end(), this->text + this->tree->width};
+        return Iterator{this->tree->children().data() + this->tree->children().size(), this->text + this->tree->width};
     }
 };
 
